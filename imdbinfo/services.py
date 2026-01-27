@@ -104,6 +104,8 @@ def request_json_url(url: str) -> Any:
         error_msg = f"Error fetching {url}: HTTP {resp.status_code}"
         if resp.text:
             error_msg += f" - {resp.text[:200]}"
+        if resp.status_code == 202:
+            error_msg += "****** AWS WAF enforcement in place. Try again later. ******"
         raise Exception(error_msg)
 
     tree = html.fromstring(resp.content or b"")
