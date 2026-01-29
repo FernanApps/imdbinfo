@@ -107,6 +107,9 @@ newCreditCategoryIdToOldCategoryIdObject = {
     "amzn1.imdb.concept.name_credit_category.8c952a79-f27c-4e5a-be85-b114b0ecd04e": "transportation_department",
     "amzn1.imdb.concept.name_credit_category.fcb0b804-e618-4044-8a74-79e94d17e3cd": "visual_effects",
     "amzn1.imdb.concept.name_credit_category.c84ecaff-add5-4f2e-81db-102a41881fe3": "writer",
+
+    # group categories
+    "amzn1.imdb.concept.name_credit_group.7510356e-fde9-438e-b3ad-0099ba6bc8ce" : "stars",
 }
 
 def flip_unique(d: Dict[Any, Any]) -> Dict[Any, Any]:
@@ -234,12 +237,12 @@ def _parse_jobs_v2(raw_jobs) -> List[str]:
 def _parse_principal_credits_v2_stars(principal_credits_groups) -> List[Person]:
     if not principal_credits_groups:
         return []
-    stars: List[Person] = []
-    for group in principal_credits_groups:
-        if group.get("grouping", {}).get("text") == "Stars":
-            for credit in (group.get("credits") or []):
-                stars.append(Person.from_cast(credit))
-    return stars
+    return [
+        Person.from_cast(edge)
+        for group in principal_credits_groups
+        if group.get("grouping", {}).get("groupingId") in [ OldCategoryIdToNewCategoryIdObject["stars"] ]
+        for edge in (group.get("credits") or [])
+    ]
 
 
 def _parse_awards(awards_node) -> AwardInfo:
