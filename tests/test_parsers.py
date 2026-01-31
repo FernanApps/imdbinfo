@@ -228,14 +228,14 @@ def test_parse_principal_credits_v2_stars_with_none_credits():
     """
     # Case 1: credits is explicitly None
     data_with_none_credits = [
-        {'grouping': {'text': 'Stars'}, 'credits': None}
+        {'grouping': {'text': 'Stars', 'groupingId':'amzn1.imdb.concept.name_credit_group.7510356e-fde9-438e-b3ad-0099ba6bc8ce'}, 'credits': None}
     ]
     result = parsers._parse_principal_credits_v2_stars(data_with_none_credits)
     assert result == []
 
     # Case 2: credits key is missing entirely
     data_without_credits = [
-        {'grouping': {'text': 'Stars'}}
+        {'grouping': {'text': 'Stars', 'groupingId':'amzn1.imdb.concept.name_credit_group.7510356e-fde9-438e-b3ad-0099ba6bc8ce'}}
     ]
     result = parsers._parse_principal_credits_v2_stars(data_without_credits)
     assert result == []
