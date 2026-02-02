@@ -188,10 +188,10 @@ Get parental guide information including content advisories, severity level, spo
 from imdbinfo import get_parental_guide
 
 pg = get_parental_guide("tt0133093")  # The Matrix
-for category in pg.categories:
-    print(category)  # e.g. NUDITY - MILD (6 descriptions)
-    for category_text in category.category_texts_list(spolier=True):
-        print(f" - {category_text.text} (SPOILER: {category_text.is_spoiler})")
+for cat in pg.categories:
+    print(cat)  # e.g. NUDITY - MILD (6 descriptions)
+    for txt in cat.category_texts_list(spolier=True):
+        print(f" - {txt.text} (SPOILER: {txt.is_spoiler})")
 ```
 
 ### Localized results in multiple languages (set globally or per request)
