@@ -364,10 +364,19 @@ def parse_json_movie(raw_json) -> Optional[MovieDetail]:
                                        _parse_principal_credits_v2_stars,
                                        )
     data["directors"] = pjmespatch(
-        "props.pageProps.mainColumnData.creditGroupings.edges[].node",
+        "props.pageProps.mainColumnData.crewV2",
         raw_json,
-        _parse_directors,
+        _parse_directors_crewv2,
     )
+
+    if not data["directors"]:  # fallback to old parsing if new one fails
+        data["directors"] = pjmespatch(
+            "props.pageProps.mainColumnData.creditGroupings.edges[].node",
+            raw_json,
+            _parse_directors,
+        )
+
+
     data["filming_locations"] = pjmespatch(
         "props.pageProps.mainColumnData.filmingLocations.edges[].node.text", raw_json
     )
