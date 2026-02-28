@@ -162,3 +162,8 @@
 
 ## v0.7.0
 - Deprecating python support for versions below 3.10. Not effective but will be in future releases, we will use features only available in 3.10+.
+
+## v0.7.1
+- Adding Parental Guide information to MovieDetail model. Check README.md for more details.
+- fix parsing on empty storyline_keywords summaries synopses sound_mixes printed_formats negative_formats laboratories colorations cameras aspect_ratios
+- improved directors parsing with CrewV2

@@ -600,3 +600,81 @@ class AkasData(BaseModel):
             return self.imdbId
         else:
             raise KeyError(f"Key {item} not found in AkasDataModel")
+
+
+class ParentalGuideContentDescription(BaseModel):
+    is_spoiler: bool = False
+    text: str = ""
+
+    @classmethod
+    def from_node(cls, node: dict) -> "ParentalGuideContentDescription":
+        return cls(
+            is_spoiler=node.get("isSpoiler", False),
+            text=node.get("text", {}).get("plaidHtml",""),
+        )
+
+
+
+class ParentalGuideCategory(BaseModel):
+    id: str = ""
+    text: str = ""
+    content_descriptions: List[ParentalGuideContentDescription] = Field(default_factory=list)
+    severity: str = "NONE"
+
+    @classmethod
+    def from_edge(cls, edge: dict) -> "ParentalGuideCategory":
+        cat = edge.get("category", {}) or {}
+        cat_contents = [
+            ParentalGuideContentDescription.from_node(item.get("node", {}) or {})
+            for item in edge.get("guideItems", {}).get("edges", []) or []
+        ]
+        votesfor = 0
+        severity = 'NONE'
+        for tm in edge.get("severityBreakdown", []):
+            if tm.get('votedFor',0) > votesfor:
+                votesfor = tm.get('votedFor',0)
+                severity = tm.get('voteType','NONE')
+
+        return cls(
+            id=cat.get("id", ""),
+            text=cat.get("text", ""),
+            content_descriptions=cat_contents,
+            severity=severity,
+        )
+
+    def has_category_texts(self) -> bool:
+        """Return True if there are any guide items in this category."""
+        return len(self.content_descriptions) > 0
+
+    def category_texts_list(self, spoiler=False) -> List[str]:
+        """Return a list of texts from the guide items."""
+        return [item.text for item in self.content_descriptions if item.is_spoiler == spoiler]
+
+    def __repr__(self):
+        return f"{self.id} - {self.severity} ({len(self.content_descriptions)} descriptions)"
+
+    def __str__(self):
+        return self.__repr__()
+
+
+class ParentalGuideList(BaseModel):
+    categories: List[ParentalGuideCategory] = Field(default_factory=list)
+
+    @classmethod
+    def from_raw(cls, parental_guide: dict) -> Optional["ParentalGuideList"]:
+        if not parental_guide:
+            return None
+        categories = [
+            ParentalGuideCategory.from_edge(edge) for edge in parental_guide.get("categories", []) or []
+        ]
+        return cls(categories=categories)
+
+    @property
+    def summary(self) -> dict[str, str]:
+        """Return the list of parental guide categories."""
+        return {category.id: category.severity for category in self.categories}
+
+    def __str__(self):
+        return f"{self.summary}"
+    def __repr__(self):
+        return self.__str__()

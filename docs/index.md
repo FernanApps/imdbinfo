@@ -3,7 +3,7 @@
 
 [![PyPI Downloads](https://static.pepy.tech/badge/imdbinfo)](https://pepy.tech/projects/imdbinfo) 
 [![Build Status](https://github.com/tveronesi/imdbinfo/actions/workflows/pypi-publish.yml/badge.svg)](https://github.com/tveronesi/imdbinfo/actions/workflows/pypi-publish.yml)
-[![Python Versions](https://img.shields.io/pypi/pyversions/imdbinfo?style=flat-square)](https://pypi.org/project/imdbinfo/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/imdbinfo)](https://pypi.org/project/imdbinfo/)
 
 Have you ever needed to grab movie or actor details from IMDb, but didn’t want to deal with complicated APIs or authentication keys?
 
@@ -25,6 +25,7 @@ That’s exactly why I built [`imdbinfo`](https://github.com/tveronesi/imdbinfo)
 - 📸 **Poster images** and **backdrops**
 - 📊 **Ratings** from IMDb and other sources
 - 🗂️ **Full filmography** for actors, directors and writers
+- 🛡️ **Parental guide**   including content advisories, severity level, spoiler flags, and content descriptions
 - 📝 **Typed Pydantic models** for predictable responses
 - ⚡ **Built-in caching** for faster repeated requests
 - ✅ **No API keys required**

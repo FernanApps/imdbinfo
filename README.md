@@ -23,6 +23,7 @@
 - 📝 **User reviews and ratings** via `get_reviews`
 - 🎭 **Movie trivia and interesting facts** via `get_trivia`
 - 🗂️ **Full filmography** for actors, directors and writers via `get_filmography`
+- 🛡️ **Parental guide** including content advisories via `get_parental_guide`
 - 📝 **Typed Pydantic models** for predictable responses
 - ⚡ **Built-in caching** for faster repeated requests
 - ✅ **No API keys required**
@@ -178,6 +179,19 @@ for fact in trivia[:3]:
     print(f"Interest Score: {fact['interestScore']}")
     print(f"Fact: {fact['body'][:200]}...")
     print("---")
+```
+
+#### Parental Guide
+Get parental guide information including content advisories, severity level, spoiler flags, and content descriptions:
+
+```python
+from imdbinfo import get_parental_guide
+
+pg = get_parental_guide("tt0133093")  # The Matrix
+for cat in pg.categories:
+    print(cat)  # e.g. NUDITY - MILD (6 descriptions)
+    for txt in cat.category_texts_list(spolier=True):
+        print(f" - {txt.text} (SPOILER: {txt.is_spoiler})")
 ```
 
 ### Localized results in multiple languages (set globally or per request)

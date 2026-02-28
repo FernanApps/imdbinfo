@@ -1,11 +1,6 @@
-from imdbinfo import get_akas
-
 import logging
-
-from imdbinfo.services import get_reviews, get_trivia
-
+from imdbinfo import get_akas ,get_reviews, get_trivia, get_parental_guide
 logging.basicConfig(level=logging.WARNING)
-
 
 movies_list = [
     "tt0133093",   # The Matrix (movie)
@@ -27,7 +22,14 @@ for imdb_id in movies_list:
     movie_akas = get_akas(imdb_id)
     movie_reviews = get_reviews(imdb_id)
     movie_trivia = get_trivia(imdb_id)
+    parental_guide = get_parental_guide(imdb_id)
     print("##########################################################################")
     print(movie_akas['akas'])
     print(f"Reviews: {movie_reviews[:5]}")
     print(f"Trivia: {movie_trivia[:5]}")
+    print(f"Parental Guide: {parental_guide}")
+    print("##########################################################################")
+    for category in parental_guide.categories:
+        print(category)
+        for category_text in category.content_descriptions:
+            print(f" - {category_text.text} (SPOILER: {category_text.is_spoiler})")

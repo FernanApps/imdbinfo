@@ -1,6 +1,7 @@
 from imdbinfo.models import Person, CastMember, MovieBriefInfo, MovieDetail
 from imdbinfo.models import SeriesMixin
 from imdbinfo.models import InfoSeries, InfoEpisode
+from imdbinfo.models import ParentalGuideContentDescription, ParentalGuideCategory, ParentalGuideList
 
 
 def test_person_from_directors():
@@ -86,3 +87,68 @@ def test_info_episode_str():
     assert str(e) == 'Serie - S01E02 (tt123)'
     e2 = InfoEpisode(season_n=None, episode_n=None, series_imdbId='tt999', series_title='Titolo', series_title_localized=None)
     assert str(e2) == 'Titolo - S??E?? (tt999)'
+
+
+def test_parental_guide_item_from_node():
+    node = {"isSpoiler": True, "text": {"plaidHtml": "Contains spoilers"}}
+    item = ParentalGuideContentDescription.from_node(node)
+    assert item.is_spoiler is True
+    assert item.text == "Contains spoilers"
+
+
+def test_parental_guide_category_from_edge_and_severity():
+    edge = {
+        "category": {"id": "violence", "text": "Violence"},
+        "guideItems": {
+            "edges": [
+                {"node": {"isSpoiler": False, "text": {"plaidHtml": "Fighting scenes"}}},
+                {"node": {"isSpoiler": True, "text": {"plaidHtml": "Major spoiler"}}},
+            ]
+        },
+        "severityBreakdown": [
+            {"votedFor": 2, "voteType": "Mild"},
+            {"votedFor": 8, "voteType": "Severe"},
+            {"votedFor": 3, "voteType": "Moderate"},
+        ],
+    }
+    cat = ParentalGuideCategory.from_edge(edge)
+    assert cat.id == "violence"
+    assert cat.text == "Violence"
+    assert len(cat.content_descriptions) == 2
+    assert cat.severity == "Severe"
+
+
+def test_parental_guide_category_helpers():
+    cat = ParentalGuideCategory(
+        id="language",
+        text="Language",
+        content_descriptions=[
+            ParentalGuideContentDescription(is_spoiler=False, text="Profanity"),
+            ParentalGuideContentDescription(is_spoiler=True, text="Plot-revealing insult"),
+        ],
+        severity="Mild"
+    )
+    assert cat.has_category_texts() is True
+    assert cat.category_texts_list(spoiler=False) == ["Profanity"]
+    assert cat.category_texts_list(spoiler=True) == ["Plot-revealing insult"]
+
+
+def test_parental_guide_data_from_raw_and_list_categories():
+    parental_guide = {
+        "categories": [
+            {
+                "category": {"id": "violence", "text": "Violence"},
+                "guideItems": {"edges": []},
+                "severityBreakdown": [{"votedFor": 4, "voteType": "Moderate"}],
+            }
+        ]
+    }
+    pg = ParentalGuideList.from_raw(parental_guide)
+    assert pg is not None
+    assert len(pg.categories) == 1
+    assert pg.summary == {"violence": "Moderate"}
+
+
+def test_parental_guide_data_from_raw_with_empty_returns_none():
+    assert ParentalGuideList.from_raw({}) is None
+    assert ParentalGuideList.from_raw(None) is None

@@ -28,6 +28,7 @@ import niquests
 import json
 from lxml import html
 from enum import Enum
+from .locale import _retrieve_url_lang
 
 
 from .models import (
@@ -46,10 +47,11 @@ from .parsers import (
     parse_json_akas,
     parse_json_trivia,
     parse_json_reviews,
-    parse_json_filmography,
+    parse_json_filmography, parse_json_parental_guide,
 )
-from .locale import _retrieve_url_lang
 
+#enable WAF handling by default, will be disabled if not needed after first request for performance
+WAF_ON=True
 
 class TitleType(Enum):
     """
@@ -82,17 +84,30 @@ def normalize_imdb_id(imdb_id: str, locale: Optional[str] = None):
     imdb_id = f"{num:07d}"
     return imdb_id, lang
 
+def get_cookies():
+    """
+    Try to get AWS WAF token cookies if needed.
+    Returns a dictionary of cookies to be used in requests.
+    if no token is needed, returns an empty dictionary.
+    """
+    # prepare for WAF check
+    global WAF_ON
+    if not WAF_ON:
+        return {}
+    WAF_ON = False
+    return {}
 
 def request_json_url(url: str) -> Any:
-    user_agent = random.choice(USER_AGENTS_LIST)
-    logger.debug("Using User-Agent: %s", user_agent)
-    resp = niquests.get(url, headers={"User-Agent": user_agent})
+    resp = request_handler(url)
     if resp.status_code != 200:
         logger.error("Error fetching %s: %s", url, resp.status_code)
-        error_msg = f"Error fetching {url}: HTTP {resp.status_code} using User-Agent {user_agent}"
+        error_msg = f"Error fetching {url}: HTTP {resp.status_code}"
         if resp.text:
             error_msg += f" - {resp.text[:200]}"
+        if resp.status_code == 202:
+            error_msg += "****** AWS WAF enforcement in place. Try again later. ******"
         raise Exception(error_msg)
+
     tree = html.fromstring(resp.content or b"")
     script = tree.xpath('//script[@id="__NEXT_DATA__"]/text()')
     if not script or type(script) is not list:
@@ -100,6 +115,20 @@ def request_json_url(url: str) -> Any:
         raise Exception("No script found with id '__NEXT_DATA__'")
     raw_json = json.loads(str(script[0]))
     return raw_json
+
+
+def request_handler(url: str) -> Any:
+    user_agent = random.choice(USER_AGENTS_LIST)
+    logger.debug("Using User-Agent: %s", user_agent)
+    cookies = get_cookies()
+    # # if cookies is an empty dict, no cookies will be sent and normal request will be used (WAF is off)
+    # if cookies:
+    #     logger.debug("Using cookies: %s", cookies)
+    #     resp = cffi_requests.get(url, cookies=cookies, impersonate="chrome")
+    # else:
+    headers = {"User-Agent": user_agent}
+    resp = niquests.get(url, headers=headers)
+    return resp
 
 
 def request_graphql_url(headers, imdbId, payload, url) -> Any:
@@ -162,21 +191,7 @@ def search_title(
         url += f"&ttype={ttype_value}"
 
     logger.info("Searching for title '%s' [Type: %s]", title, type_log)
-    user_agent = random.choice(USER_AGENTS_LIST)
-    logger.debug("Using User-Agent: %s", user_agent)
-    resp = niquests.get(url, headers={"User-Agent": user_agent})
-    if resp.status_code != 200:
-        logger.warning("Search request failed: %s", resp.status_code)
-        return None
-
-    tree = html.fromstring(resp.content or b"")
-    script = tree.xpath('//script[@id="__NEXT_DATA__"]/text()')
-
-    if not script or not isinstance(script, list) or len(script) == 0:
-        logger.error("No script found with id '__NEXT_DATA__'")
-        raise Exception("No script found with id '__NEXT_DATA__'")
-
-    raw_json = json.loads(str(script[0]))
+    raw_json = request_json_url(url)
 
     result = parse_json_search(raw_json)
     logger.debug("Search for '%s' returned %s titles", title, len(result.titles))
@@ -301,10 +316,23 @@ def get_reviews(imdb_id: str) -> List[Dict]:
     return reviews_list
 
 
+
+def get_parental_guide(imdb_id: str) -> Dict:
+    imdb_id, _ = normalize_imdb_id(imdb_id)
+    raw_json = _get_extended_title_info(imdb_id)
+    if not raw_json:
+        logger.warning("No parental guide found for title %s", imdb_id)
+        return {}
+    parental_guide = parse_json_parental_guide(raw_json)
+    logger.debug("Fetched parental guide for title %s", imdb_id)
+    return parental_guide
+
+
 @lru_cache(maxsize=128)
 def _get_extended_title_info(imdb_id) -> dict:
     """
-    Fetch extended info (like AKAs) using IMDb's GraphQL API.
+    Fetch extended info using IMDb's GraphQL API:
+    including akas, trivia, reviews, interests, and parental guide.
     """
     imdbId = "tt" + imdb_id
     url = "https://api.graphql.imdb.com/"
@@ -322,60 +350,95 @@ def _get_extended_title_info(imdb_id) -> dict:
             originalTitle: originalTitleText {
               text
             }
-              interests(first:20){
-                edges{node{primaryText{text}}}
-           }
+            interests(first: 20) {
+              edges {
+                node {
+                  primaryText {
+                    text
+                  }
+                }
+              }
+            }
             akas(first: 200) {
               edges {
                 node {
-                  country { name: text code: id }
-                  language { name: text code: id }
+                  country {
+                    name: text
+                    code: id
+                  }
+                  language {
+                    name: text
+                    code: id
+                  }
                   title: text
                 }
               }
             }
-             trivia(first: 50) {
-          edges {
-            node {
-              id
-              displayableArticle {
-                body {
-                  plaidHtml
+            trivia(first: 50) {
+              edges {
+                node {
+                  id
+                  displayableArticle {
+                    body {
+                      plaidHtml
+                    }
+                  }
+                  interestScore {
+                    usersVoted
+                    usersInterested
+                  }
                 }
               }
-              interestScore {
-                usersVoted
-                usersInterested
-              }
             }
-          }
-        }
-        reviews(first: 50) {
-          edges {
-            node {
-              id
-              spoiler
-              author {
-                nickName
-              }
-              summary {
-                originalText
-              }
-              text {
-                originalText {
-                  plaidHtml
+            reviews(first: 50) {
+              edges {
+                node {
+                  id
+                  spoiler
+                  author {
+                    nickName
+                  }
+                  summary {
+                    originalText
+                  }
+                  text {
+                    originalText {
+                      plaidHtml
+                    }
+                  }
+                  authorRating
+                  submissionDate
+                  helpfulness {
+                    upVotes
+                    downVotes
+                  }
+                  __typename
                 }
               }
-              authorRating
-              submissionDate
-              helpfulness {
-                upVotes
-                downVotes
-              }
-              __typename
             }
-          }
-        }
+             parentsGuide {
+                  categories {
+                    category {
+                      id
+                      text
+                    }
+                    guideItems(first: 10) {
+                      edges {
+                        node {
+                          isSpoiler
+                          text {
+                            plaidHtml
+                          }
+                        }
+                      }
+                    }
+                    severity{id,votedFor}
+                    severityBreakdown {
+                      votedFor
+                      voteType
+                    }
+                  }
+                }
           }
         }
         """
