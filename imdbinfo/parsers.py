@@ -571,6 +571,19 @@ def parse_json_movie(raw_json) -> Optional[MovieDetail]:
     return movie
 
 
+def parse_json_search_new(raw_json) -> SearchResult:
+    data = pjmespatch('data.mainSearch.edges[].node.entity', raw_json)
+    title = []
+    people = []
+
+    [people.append(Person.from_search_new(e)) for e in data if e.get('__typename') == 'Name']
+    [title.append(MovieBriefInfo.from_movie_search_new(e)) for e in data if e.get('__typename') == 'Title']
+
+    res = SearchResult(titles=title, names=people)
+    logger.info("Parsed search results: %s titles, %s names", len(title), len(people))
+    return res
+
+
 def parse_json_search(raw_json) -> SearchResult:
     logger.debug("Parsing search results JSON")
     title = []

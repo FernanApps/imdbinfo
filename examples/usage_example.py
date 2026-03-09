@@ -1,11 +1,14 @@
 from imdbinfo import search_title, get_movie
 
 import logging
+
+from imdbinfo.services import search_title_name
+
 logging.basicConfig(level=logging.WARNING)
 
 #Example 1: Search title/name and print the results
 title_query = "little house on the prairie"
-results = search_title(title_query)
+results = search_title_name(title_query)
 print(f"Search Results for {title_query} in titles:")
 for movie in results.titles:
     print(f"Found a movie: {movie.title} ({movie.title_localized}) - {movie.imdbId} of kind {movie.kind}")

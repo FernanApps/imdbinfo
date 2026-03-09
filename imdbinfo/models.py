@@ -95,6 +95,21 @@ class Person(BaseModel):
         )
 
     @classmethod
+    def from_search_new(cls, data: dict):
+
+        professions = data.get("professions", [])
+        prof = ','.join([p.get('profession', {}).get('text', '') for p in professions if p.get('profession', {}).get('text')])
+
+        return cls(
+            name=data["nameText"]['text'],
+            imdb_id=data["id"].replace("nm", ""),
+            id=data["id"].replace("nm", "" ),  # id without 'nm' prefix, e.g. '0000126'
+            imdbId=data["id"],
+            url=f"https://www.imdb.com/name/{data['id']}",
+            job=prof,
+        )
+
+    @classmethod
     def from_category(cls, data: dict):
         return cls(
             name=data["rowTitle"],
@@ -358,6 +373,23 @@ class MovieBriefInfo(SeriesMixin, BaseModel):
             year=data.get("releaseYear", None),
             kind=data.get("titleType", {}).get("id", None),
             rating=data.get("ratingSummary", {}).get("aggregateRating", None),
+        )
+
+    @classmethod
+    def from_movie_search_new(cls, data: dict):
+        release_year = (data.get("releaseDate") or {}).get("year")
+        cover_url = (data.get("primaryImage") or {}).get("url")
+        return cls(
+            imdbId=data["id"],
+            imdb_id=data["id"].replace("tt", ""),
+            id=data["id"].replace("tt", ""),
+            title_localized=data["titleText"]["text"],
+            title=data["originalTitleText"]["text"],
+            cover_url=cover_url,
+            url=f"https://www.imdb.com/title/{data['id']}/",
+            year=release_year,
+            kind=(data.get("titleType") or {}).get("id"),
+            rating=(data.get("ratingSummary") or {}).get("aggregateRating"),
         )
 
     @classmethod

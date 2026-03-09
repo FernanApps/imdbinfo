@@ -47,7 +47,7 @@ from .parsers import (
     parse_json_akas,
     parse_json_trivia,
     parse_json_reviews,
-    parse_json_filmography, parse_json_parental_guide,
+    parse_json_filmography, parse_json_parental_guide, parse_json_search_new,
 )
 
 GRAPHQL_URL = "https://api.graphql.imdb.com/"
@@ -61,12 +61,12 @@ class TitleType(Enum):
     The values correspond to the URL parameter used in search queries.
     """
 
-    Movies = "ft"
-    Series = "tv"
-    Episodes = "ep"
-    Shorts = "sh"
-    TvMovie = "tvm"
-    Video = "v"
+    Movies = "ft" # MOVIE
+    Series = "tv" #TV
+    Episodes = "ep" # TV_EPISODE
+    Shorts = "sh" # MOVIE
+    TvMovie = "tvm" # TV
+    Video = "v" #ALL
 
 
 TitleFilter = Union[TitleType, Tuple[TitleType, ...]]
@@ -133,18 +133,18 @@ def request_handler(url: str) -> Any:
     return resp
 
 
-def request_graphql_url(headers, imdbId, payload, url) -> Any:
+def request_graphql_url(headers, search_term, payload, url) -> Any:
     resp = niquests.post(url, headers=headers, json=payload)
     if resp.status_code != 200:
         logger.error("GraphQL request failed: %s", resp.status_code)
-        error_msg = f"GraphQL request failed for {imdbId}: HTTP {resp.status_code}"
+        error_msg = f"GraphQL request failed for {search_term}: HTTP {resp.status_code}"
         if resp.text:
             error_msg += f" - {resp.text[:200]}"
         raise Exception(error_msg)
     data = resp.json()
     if "errors" in data:
         logger.error("GraphQL error: %s", data["errors"])
-        raise Exception(f"GraphQL error for {imdbId}: {data['errors']}")
+        raise Exception(f"GraphQL error for {search_term}: {data['errors']}")
     return data
 
 
@@ -160,6 +160,108 @@ def get_movie(imdb_id: str, locale: Optional[str] = None) -> Optional[MovieDetai
     movie = parse_json_movie(raw_json)
     logger.debug("Fetched url %s", url)
     return movie
+
+def search_title_name(search_term: str, locale: Optional[str] = None, title_type: Optional[TitleFilter] = None) -> Optional[SearchResult]:
+    lang = f"{_retrieve_url_lang(locale)}/" if locale else ""
+    url = GRAPHQL_URL
+    query = (
+    """
+    query {
+  # Get the top 50 movie titles that most closely match the search term .
+  mainSearch(
+    first: 50
+    options: {
+      searchTerm: "%s"
+      isExactMatch: false
+      type: [TITLE, NAME]
+      # titleSearchOptions: { type: MOVIE }
+    }
+  ) {
+    edges {
+      node {
+        entity {
+          # For returned Titles, get me the id and title text
+          ... on Title {
+          __typename
+            id
+            titleText {
+              text
+            }
+            canonicalUrl
+            originalTitleText {
+              text
+            }
+            releaseDate {
+              year
+              month
+              day
+            }
+            primaryImage {
+              url
+            }
+            titleType {
+              id
+              text
+              categories {
+                id
+                text
+                value
+              }
+            }
+            ratingsSummary {
+              aggregateRating
+            }
+            runtime {
+              seconds
+            }
+          }
+          # For returned Names,
+          ... on Name {
+          __typename
+            id
+            nameText {
+              text
+            }
+            professions {
+              profession {text}
+              professionCategory {
+                traits
+                text {
+                  text
+                  id
+                }
+              }
+            }
+            knownForV2 {
+              credits {
+                # id
+                title {
+                  id
+                  titleText {
+                    text
+                  }
+                  releaseYear {
+                    year
+                  }
+                }
+              }
+            }
+            canonicalUrl
+          }
+        }
+      }
+    }
+  }
+}
+
+    """
+    ) % search_term
+    payload = {"query": query}
+    logger.info("Searching for '%s' using GraphQL API", search_term)
+    data = request_graphql_url(headers={"Content-Type": "application/json"}, search_term=search_term, payload=payload, url=url)
+    result = parse_json_search_new(data)
+
+    return result
 
 
 @lru_cache(maxsize=128)
@@ -466,7 +568,7 @@ def _get_extended_name_info(person_id) -> dict:
                 nameText {
                   text
                 }
-            
+
                 credits(first: 250
                 filter: {
             categories: [
@@ -495,7 +597,7 @@ def _get_extended_name_info(person_id) -> dict:
               "script_department"
               "producer"
               "stunts"
-              "editor"        
+              "editor"
               "stunt_coordinator"
               "special_effects"
               "assistant_director"
@@ -508,21 +610,21 @@ def _get_extended_name_info(person_id) -> dict:
               "production_designer"
               "casting_department"
               "director"
-              "composer"        
+              "composer"
               "archive_sound"
               "casting_director"
               "art_director"
             ]
           }
-                ) 
-               
+                )
+
                 {
                   edges {
                     node {
                       category {
                         id
                       }
-            
+
                       title {
                         id
                         ratingsSummary{aggregateRating}
@@ -546,7 +648,7 @@ def _get_extended_name_info(person_id) -> dict:
                       }
                     }
                   }
-            
+
                   pageInfo {
                     endCursor
                     hasNextPage
@@ -554,7 +656,7 @@ def _get_extended_name_info(person_id) -> dict:
                 }
               }
             }
-    
+
         """
         % person_id
     )
