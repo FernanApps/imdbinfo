@@ -369,7 +369,7 @@ class MovieBriefInfo(SeriesMixin, BaseModel):
             url=f"https://www.imdb.com/title/{imdb_full}/",
             year=year,
             kind=data.get("titleType", {}).get("id"),
-            rating=data.get("ratingSummary", {}).get("aggregateRating"),
+            rating=data.get("ratingsSummary", {}).get("aggregateRating"),
         )
 
     @classmethod
