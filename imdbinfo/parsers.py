@@ -576,8 +576,8 @@ def parse_json_search(raw_json) -> SearchResult:
     title = []
     people = []
 
-    [people.append(Person.from_search_new(e)) for e in data if e.get('__typename') == 'Name']
-    [title.append(MovieBriefInfo.from_movie_search_new(e)) for e in data if e.get('__typename') == 'Title']
+    [people.append(Person.from_search(e)) for e in data if e.get('__typename') == 'Name']
+    [title.append(MovieBriefInfo.from_movie_search(e)) for e in data if e.get('__typename') == 'Title']
 
     res = SearchResult(titles=title, names=people)
     logger.info("Parsed search results: %s titles, %s names", len(title), len(people))

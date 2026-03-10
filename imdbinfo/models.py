@@ -83,19 +83,6 @@ class Person(BaseModel):
 
     @classmethod
     def from_search(cls, data: dict):
-        return cls(
-            name=data["nameText"],
-            imdb_id=data["nameId"].replace("nm", ""),
-            id=data["nameId"].replace(
-                "nm", ""
-            ),  # id without 'nm' prefix, e.g. '0000126'
-            imdbId=data["nameId"],
-            url=f"https://www.imdb.com/name/{data['nameId']}",
-            job=str((data.get("professions") or [""])[0]),
-        )
-
-    @classmethod
-    def from_search_new(cls, data: dict):
 
         professions = data.get("professions", [])
         prof = ','.join([p.get('profession', {}).get('text', '') for p in professions if p.get('profession', {}).get('text')])
@@ -362,34 +349,27 @@ class MovieBriefInfo(SeriesMixin, BaseModel):
 
     @classmethod
     def from_movie_search(cls, data: dict):
-        return cls(
-            imdbId=data["titleId"],
-            imdb_id=str(data["titleId"].replace("tt", "")),
-            id=str(data["titleId"].replace("tt", "")),
-            title_localized=data["titleText"],
-            title=data["originalTitleText"],
-            cover_url=data.get("primaryImage", {}).get("url", None),
-            url=f"https://www.imdb.com/title/{data['titleId']}/",
-            year=data.get("releaseYear", None),
-            kind=data.get("titleType", {}).get("id", None),
-            rating=data.get("ratingSummary", {}).get("aggregateRating", None),
-        )
+        # safely extract nested structures (preserve original behavior of returning None when missing)
+        release = data.get("releaseDate")
+        year = release.get("year") if isinstance(release, dict) else None
 
-    @classmethod
-    def from_movie_search_new(cls, data: dict):
-        release_year = (data.get("releaseDate") or {}).get("year")
-        cover_url = (data.get("primaryImage") or {}).get("url")
+        primary = data.get("primaryImage")
+        cover_url = primary.get("url") if isinstance(primary, dict) else None
+
+        imdb_full = data["id"]
+        imdb_num = str(imdb_full.replace("tt", ""))
+
         return cls(
-            imdbId=data["id"],
-            imdb_id=data["id"].replace("tt", ""),
-            id=data["id"].replace("tt", ""),
+            imdbId=imdb_full,
+            imdb_id=imdb_num,
+            id=imdb_num,
             title_localized=data["titleText"]["text"],
             title=data["originalTitleText"]["text"],
             cover_url=cover_url,
-            url=f"https://www.imdb.com/title/{data['id']}/",
-            year=release_year,
-            kind=(data.get("titleType") or {}).get("id"),
-            rating=(data.get("ratingSummary") or {}).get("aggregateRating"),
+            url=f"https://www.imdb.com/title/{imdb_full}/",
+            year=year,
+            kind=data.get("titleType", {}).get("id"),
+            rating=data.get("ratingSummary", {}).get("aggregateRating"),
         )
 
     @classmethod
