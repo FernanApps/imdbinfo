@@ -54,7 +54,7 @@ def _none_to_string_in_list(result):
     """
     if result is None:
         return []
-    r =  [
+    r = [
         [str(item) if item is not None else "" for item in sublist]
         for sublist in result
     ]
