@@ -83,14 +83,19 @@ class Person(BaseModel):
 
     @classmethod
     def from_search(cls, data: dict):
-
         professions = data.get("professions", [])
-        prof = ','.join([p.get('profession', {}).get('text', '') for p in professions if p.get('profession', {}).get('text')])
+        prof = ",".join(
+            [
+                p.get("profession", {}).get("text", "")
+                for p in professions
+                if p.get("profession", {}).get("text")
+            ]
+        )
 
         return cls(
-            name=data["nameText"]['text'],
+            name=data["nameText"]["text"],
             imdb_id=data["id"].replace("nm", ""),
-            id=data["id"].replace("nm", "" ),  # id without 'nm' prefix, e.g. '0000126'
+            id=data["id"].replace("nm", ""),  # id without 'nm' prefix, e.g. '0000126'
             imdbId=data["id"],
             url=f"https://www.imdb.com/name/{data['id']}",
             job=prof,
@@ -622,15 +627,16 @@ class ParentalGuideContentDescription(BaseModel):
     def from_node(cls, node: dict) -> "ParentalGuideContentDescription":
         return cls(
             is_spoiler=node.get("isSpoiler", False),
-            text=node.get("text", {}).get("plaidHtml",""),
+            text=node.get("text", {}).get("plaidHtml", ""),
         )
-
 
 
 class ParentalGuideCategory(BaseModel):
     id: str = ""
     text: str = ""
-    content_descriptions: List[ParentalGuideContentDescription] = Field(default_factory=list)
+    content_descriptions: List[ParentalGuideContentDescription] = Field(
+        default_factory=list
+    )
     severity: str = "NONE"
 
     @classmethod
@@ -641,11 +647,11 @@ class ParentalGuideCategory(BaseModel):
             for item in edge.get("guideItems", {}).get("edges", []) or []
         ]
         votesfor = 0
-        severity = 'NONE'
+        severity = "NONE"
         for tm in edge.get("severityBreakdown", []):
-            if tm.get('votedFor',0) > votesfor:
-                votesfor = tm.get('votedFor',0)
-                severity = tm.get('voteType','NONE')
+            if tm.get("votedFor", 0) > votesfor:
+                votesfor = tm.get("votedFor", 0)
+                severity = tm.get("voteType", "NONE")
 
         return cls(
             id=cat.get("id", ""),
@@ -660,7 +666,11 @@ class ParentalGuideCategory(BaseModel):
 
     def category_texts_list(self, spoiler=False) -> List[str]:
         """Return a list of texts from the guide items."""
-        return [item.text for item in self.content_descriptions if item.is_spoiler == spoiler]
+        return [
+            item.text
+            for item in self.content_descriptions
+            if item.is_spoiler == spoiler
+        ]
 
     def __repr__(self):
         return f"{self.id} - {self.severity} ({len(self.content_descriptions)} descriptions)"
@@ -677,7 +687,8 @@ class ParentalGuideList(BaseModel):
         if not parental_guide:
             return None
         categories = [
-            ParentalGuideCategory.from_edge(edge) for edge in parental_guide.get("categories", []) or []
+            ParentalGuideCategory.from_edge(edge)
+            for edge in parental_guide.get("categories", []) or []
         ]
         return cls(categories=categories)
 
@@ -688,5 +699,6 @@ class ParentalGuideList(BaseModel):
 
     def __str__(self):
         return f"{self.summary}"
+
     def __repr__(self):
         return self.__str__()
