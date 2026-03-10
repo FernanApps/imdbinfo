@@ -25,15 +25,15 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_LOCALES = ("en", "fr-ca", "fr", "hi", "de", "it", "es", "pt", "es-es")
 LOCALE_TO_COUNTRY_CODE = {
-    "en":"EN",
-    "fr-ca":"FR",
-    "fr":"FR",
-    "hi":"IN",
-    "de":"DE",
-    "it":"IT",
-    "es":"ES",
-    "pt":"PT",
-    "es-es":"ES",
+    "en": "EN",
+    "fr-ca": "FR",
+    "fr": "FR",
+    "hi": "IN",
+    "de": "DE",
+    "it": "IT",
+    "es": "ES",
+    "pt": "PT",
+    "es-es": "ES",
 }
 DEFAULT_LOCALE = "en"
 _configured_locale = None
@@ -61,6 +61,7 @@ def _retrieve_url_lang(locale=None):
     lcl = locale or _configured_locale or DEFAULT_LOCALE
     lcl = _normalize_locale(lcl)
     return "" if lcl == DEFAULT_LOCALE else lcl
+
 
 def _get_country_code_from_locale(locale=None):
     lcl = locale or _configured_locale or DEFAULT_LOCALE
