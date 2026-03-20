@@ -18,7 +18,8 @@ dependencies = [
     "pydantic",
     "jmespath",
     "deprecated",
-    "curl_cffi"
+    "curl_cffi",
+    "cryptography"
 ]
 
 
