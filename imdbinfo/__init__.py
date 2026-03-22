@@ -36,6 +36,13 @@ from .services import (
     get_all_interests,
     TitleType,
 )
+from .exceptions import (
+    ImdbinfoError,
+    HTTPError,
+    WAFError,
+    GraphQLError,
+    ParseError,
+)
 
 __all__ = [
     "get_movie",
@@ -51,6 +58,12 @@ __all__ = [
     "get_filmography",
     "get_all_interests",
     "TitleType",
+    # exceptions
+    "ImdbinfoError",
+    "HTTPError",
+    "WAFError",
+    "GraphQLError",
+    "ParseError",
 ]
 
 # setup library logging

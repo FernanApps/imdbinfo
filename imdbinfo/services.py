@@ -29,6 +29,7 @@ import json
 from lxml import html
 from enum import Enum
 from .locale import _retrieve_url_lang, _get_country_code_from_lang_locale
+from .exceptions import HTTPError, WAFError, GraphQLError, ParseError
 
 from .models import (
     SearchResult,
@@ -108,18 +109,30 @@ def request_json_url(url: str) -> Any:
     resp = request_handler(url)
     if resp.status_code != 200:
         logger.error("Error fetching %s: %s", url, resp.status_code)
-        error_msg = f"Error fetching {url}: HTTP {resp.status_code}"
-        if resp.text:
-            error_msg += f" - {resp.text[:200]}"
+        response_text = (resp.text or "")[:500]
         if resp.status_code == 202:
-            error_msg += "****** AWS WAF enforcement in place. Try again later. ******"
-        raise Exception(error_msg)
+            raise WAFError(
+                f"AWS WAF enforcement blocked the request to {url} (HTTP 202). "
+                "Try again later, or use a different IP / proxy.",
+                status_code=202,
+                url=url,
+                response_text=response_text,
+            )
+        raise HTTPError(
+            f"Error fetching {url}: HTTP {resp.status_code}",
+            status_code=resp.status_code,
+            url=url,
+            response_text=response_text,
+        )
 
     tree = html.fromstring(resp.content or b"")
     script = tree.xpath('//script[@id="__NEXT_DATA__"]/text()')
     if not script or type(script) is not list:
         logger.error("No script found with id '__NEXT_DATA__'")
-        raise Exception("No script found with id '__NEXT_DATA__'")
+        raise ParseError(
+            f"No '__NEXT_DATA__' script tag found in the response from {url}",
+            url=url,
+        )
     raw_json = json.loads(str(script[0]))
     return raw_json
 
@@ -147,8 +160,11 @@ def request_handler(url: str) -> Any:
     logger.debug("Using User-Agent: %s", USER_AGENT)
     if resp.status_code != 200:
         logger.debug("Error fetching %s: %s", url, resp.status_code)
-        cookies = get_cookies(resp.text, USER_AGENT)
-        resp = niquests.get(url, headers=HEADERS , cookies=cookies)
+        try:
+            cookies = get_cookies(resp.text, USER_AGENT)
+            resp = niquests.get(url, headers=HEADERS, cookies=cookies)
+        except Exception as waf_exc:
+            logger.debug("WAF solver did not run (response will be evaluated upstream): %s", waf_exc)
     return resp
 
 
@@ -156,14 +172,22 @@ def request_graphql_url(headers, search_term, payload, url) -> Any:
     resp = niquests.post(url, headers=headers, json=payload)
     if resp.status_code != 200:
         logger.error("GraphQL request failed: %s", resp.status_code)
-        error_msg = f"GraphQL request failed for {search_term}: HTTP {resp.status_code}"
-        if resp.text:
-            error_msg += f" - {resp.text[:200]}"
-        raise Exception(error_msg)
+        raise GraphQLError(
+            f"GraphQL request failed for {search_term!r}: HTTP {resp.status_code}",
+            url=url,
+            query_term=search_term,
+            status_code=resp.status_code,
+            response_text=(resp.text or "")[:500],
+        )
     data = resp.json()
     if "errors" in data:
         logger.error("GraphQL error: %s", data["errors"])
-        raise Exception(f"GraphQL error for {search_term}: {data['errors']}")
+        raise GraphQLError(
+            f"GraphQL error for {search_term!r}: {data['errors']}",
+            url=url,
+            query_term=search_term,
+            errors=data["errors"],
+        )
     return data
 
 
