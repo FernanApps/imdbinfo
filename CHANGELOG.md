@@ -188,3 +188,7 @@
   
 ## v0.8.1
 - Fix AWS WAF blocking
+
+## v0.8.2
+ - improving WAF cookie generation and re-usability to avoid blocks and improve performance. Now cookies are generated once per session and reused for subsequent requests, with automatic regeneration if a block is detected. This should significantly reduce the likelihood of encountering AWS WAF blocks while maintaining efficient request handling.
+ - Added logging for cookie generation and block detection to aid in debugging and monitoring of WAF interactions.
