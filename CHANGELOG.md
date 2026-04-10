@@ -198,3 +198,4 @@
 
 ## v0.8.3
   Fix bug in movie.year parsing
+  Fix bug person.knownfor parsing
