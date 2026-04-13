@@ -317,6 +317,8 @@ def search_title(
             titleType { id text categories { id text value } }
             ratingsSummary { aggregateRating }
             runtime { seconds }
+            plot { plotText { plainText } }
+            genres { genres { text } }
           }
           ... on Name {
             __typename
@@ -349,7 +351,11 @@ def search_title(
     query = (query_template.replace("__SEARCH_TERM__", search_term)
             .replace( "__TYPES__", search_options_types))
     payload = {"query": query}
+    _lang = lang.strip("/") if lang else ""
+    _user_lang = f"{_lang}-{country_code}" if _lang else ""
     headers = {"Content-Type": "application/json", "x-imdb-user-country": country_code}
+    if _user_lang:
+        headers["x-imdb-user-language"] = _user_lang
 
     logger.info("Searching for '%s' using GraphQL API", search_term)
     data = request_graphql_url(
@@ -512,10 +518,14 @@ def _get_extended_title_info(imdb_id, locale=None) -> dict:
     imdbId = "tt" + imdb_id
     country = _get_country_code_from_lang_locale(locale)
     url = GRAPHQL_URL
+    _locale_code = locale or ""
+    _user_lang = f"{_locale_code}-{country}" if _locale_code else ""
     headers = {
         "Content-Type": "application/json",
         "x-imdb-user-country": country,
     }
+    if _user_lang:
+        headers["x-imdb-user-language"] = _user_lang
     query = (
         """
         query {
@@ -735,10 +745,14 @@ def _get_extended_name_info(person_id,  locale=None) -> dict:
         % person_id
     )
     url = GRAPHQL_URL
+    _locale_code = locale or ""
+    _user_lang = f"{_locale_code}-{country}" if _locale_code else ""
     headers = {
         "Content-Type": "application/json",
-            "x-imdb-user-country": country,
+        "x-imdb-user-country": country,
     }
+    if _user_lang:
+        headers["x-imdb-user-language"] = _user_lang
     payload = {"query": query}
     logger.info("Fetching person %s from GraphQL API", person_id)
     data = request_graphql_url(headers, person_id, payload, url)
