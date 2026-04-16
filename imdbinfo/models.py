@@ -86,9 +86,9 @@ class Person(BaseModel):
         professions = data.get("professions", [])
         prof = ",".join(
             [
-                p.get("profession", {}).get("text", "")
+                (p.get("profession") or {}).get("text", "")
                 for p in professions
-                if p.get("profession", {}).get("text")
+                if (p.get("profession") or {}).get("text")
             ]
         )
 
@@ -375,8 +375,8 @@ class MovieBriefInfo(SeriesMixin, BaseModel):
             cover_url=cover_url,
             url=f"https://www.imdb.com/title/{imdb_full}/",
             year=year,
-            kind=data.get("titleType", {}).get("id"),
-            rating=data.get("ratingsSummary", {}).get("aggregateRating"),
+            kind=(data.get("titleType") or {}).get("id"),
+            rating=(data.get("ratingsSummary") or {}).get("aggregateRating"),
             plot=((data.get("plot") or {}).get("plotText") or {}).get("plainText"),
             genres=[g["text"] for g in ((data.get("genres") or {}).get("genres") or [])],
         )
@@ -396,13 +396,13 @@ class MovieBriefInfo(SeriesMixin, BaseModel):
             id=str(data["id"].replace("tt", "")),
             imdb_id=str(data["id"].replace("tt", "")),
             imdbId=data["id"],
-            title=data.get("titleText", {}).get("text", ""),
-            title_localized=data.get("originalTitleText", {}).get("text", ""),
+            title=(data.get("titleText") or {}).get("text", ""),
+            title_localized=(data.get("originalTitleText") or {}).get("text", ""),
             cover_url=cover_url,
             url=f"https://www.imdb.com/title/{data['id']}/",
             year=year,
-            kind=data.get("titleType", {}).get("id", None),
-            rating=data.get("ratingsSummary", {}).get("aggregateRating", None),
+            kind=(data.get("titleType") or {}).get("id", None),
+            rating=(data.get("ratingsSummary") or {}).get("aggregateRating", None),
         )
 
     def __str__(self):
@@ -483,7 +483,7 @@ class SeasonEpisode(BaseModel):
             season=data["season"],
             episode=data["episode"],
             plot=data.get("plot", ""),
-            image_url=data.get("image", {}).get("url", None),
+            image_url=(data.get("image") or {}).get("url", None),
             rating=data.get("aggregateRating", None),
             votes=data.get("voteCount", None),
             year=data.get("releaseYear", None),
@@ -523,12 +523,12 @@ class BulkedEpisode(BaseModel):
             title=data["titleText"],
             genres=data.get("genres") or [],
             plot=data.get("plot", ""),
-            image_url=data.get("primaryImage", {}).get("url", None),
-            rating=data.get("ratingSummary", {}).get("aggregateRating", None),
-            votes=data.get("ratingSummary", {}).get("voteCount", None),
+            image_url=(data.get("primaryImage") or {}).get("url", None),
+            rating=(data.get("ratingSummary") or {}).get("aggregateRating", None),
+            votes=(data.get("ratingSummary") or {}).get("voteCount", None),
             year=data.get("releaseYear", None),
             release_date=_release_date(data["releaseDate"]),
-            kind=data.get("titleType", {}).get("id", None),
+            kind=(data.get("titleType") or {}).get("id", None),
             duration=data.get("runtime"),
         )
 
@@ -631,7 +631,7 @@ class ParentalGuideContentDescription(BaseModel):
     def from_node(cls, node: dict) -> "ParentalGuideContentDescription":
         return cls(
             is_spoiler=node.get("isSpoiler", False),
-            text=node.get("text", {}).get("plaidHtml", ""),
+            text=(node.get("text") or {}).get("plaidHtml", ""),
         )
 
 
@@ -648,7 +648,7 @@ class ParentalGuideCategory(BaseModel):
         cat = edge.get("category", {}) or {}
         cat_contents = [
             ParentalGuideContentDescription.from_node(item.get("node", {}) or {})
-            for item in edge.get("guideItems", {}).get("edges", []) or []
+            for item in (edge.get("guideItems") or {}).get("edges") or []
         ]
         votesfor = 0
         severity = "NONE"
